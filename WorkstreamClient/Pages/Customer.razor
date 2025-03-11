@@ -1,0 +1,198 @@
+﻿@page "/customers"
+@using WorkstreamClient.DTO
+@using WorkstreamClient.Services
+@inject CustomerService CustomerService
+@inject AuthenticationService AuthenticationService
+@inject NavigationManager NavigationManager
+
+<HeadContent>
+    <link href="css/customer.css" rel="stylesheet" />
+    <link href="css/mainlayout.css" rel="stylesheet" />
+</HeadContent>
+
+<div class="customer-container">
+    <h3 class="page-title">Customer Management</h3>
+
+    <div class="columns">
+        <div class="column">
+            <!-- Create Customer -->
+            <div class="section">
+                <h4 class="section-title">Create New Customer</h4>
+                <EditForm Model="@newCustomer" OnValidSubmit="CreateCustomer">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <InputText @bind-Value="newCustomer.Name" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <InputText @bind-Value="newCustomer.Email" class="form-control" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Create Customer</button>
+                </EditForm>
+            </div>
+        </div>
+
+        <div class="column">
+            <!-- Search Box and Customer List -->
+            <div class="search-container">
+                <input type="text" @bind="searchQuery" placeholder="Search customers..." class="form-control" />
+                <button @onclick="PerformSearch" class="btn btn-primary">Search</button>
+                <button @onclick="ClearSearch" class="btn btn-secondary">Clear</button>
+            </div>
+
+            <!-- Customers List -->
+            <div class="scrollable-container">
+                <ul class="customer-list">
+                    @foreach (var customer in filteredCustomers.Take(customersToShow))
+                    {
+                        <li class="customer-item">
+                            <div class="customer-details">
+                                <strong>@customer.Name</strong> - @customer.Email
+                            </div>
+                            <div class="customer-actions">
+                                <button @onclick="() => EditCustomer(customer.CustomerId)" class="btn btn-secondary">Edit</button>
+                                <button @onclick="() => DeleteCustomer(customer.CustomerId)" class="btn btn-danger">Delete</button>
+                            </div>
+                        </li>
+                    }
+                </ul>
+
+                @if (customersToShow < filteredCustomers.Count)
+                {
+                    <button class="btn btn-primary" @onclick="LoadMoreCustomers">Load More</button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Customer Modal -->
+    @if (isEditing)
+    {
+        <div class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Edit Customer</h4>
+                    <button class="close-button" @onclick="CancelEdit">&times;</button>
+                </div>
+                <EditForm Model="@editCustomer" OnValidSubmit="UpdateCustomer">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <InputText @bind-Value="editCustomer.Name" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <InputText @bind-Value="editCustomer.Email" class="form-control" />
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button type="button" class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update Customer</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private CustomerWriteDTO newCustomer = new CustomerWriteDTO();
+    private List<CustomerReadDTO> customers = new List<CustomerReadDTO>();
+    private CustomerReadDTO editCustomer;
+    private bool isEditing = false;
+    private string searchQuery = "";
+    private int customersToShow = 20;
+    private int customersIncrement = 10;
+    private List<CustomerReadDTO> filteredCustomers = new List<CustomerReadDTO>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomers();
+    }
+
+    private async Task LoadCustomers()
+    {
+        customers = await CustomerService.GetAllCustomersAsync();
+        FilterCustomers(); // Apply initial filtering
+    }
+
+    private void FilterCustomers()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredCustomers = customers;
+        }
+        else
+        {
+            filteredCustomers = customers
+                .Where(customer => customer.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                                   customer.Email.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        customersToShow = 20;
+    }
+
+    private async Task CreateCustomer()
+    {
+        await CustomerService.CreateCustomerAsync(newCustomer);
+        await LoadCustomers();
+        newCustomer = new CustomerWriteDTO();
+    }
+
+    private async Task DeleteCustomer(int customerId)
+    {
+        await CustomerService.DeleteCustomerAsync(customerId);
+        await LoadCustomers();
+    }
+
+    private async Task EditCustomer(int customerId)
+    {
+        var customer = await CustomerService.GetCustomerByIdAsync(customerId);
+        editCustomer = new CustomerReadDTO
+            {
+                CustomerId = customer.CustomerId,
+                Name = customer.Name,
+                Email = customer.Email
+            };
+        isEditing = true;
+    }
+
+    private void LoadMoreCustomers()
+    {
+        customersToShow += customersIncrement;
+    }
+
+    private async Task UpdateCustomer()
+    {
+        await CustomerService.UpdateCustomerAsync(editCustomer.CustomerId, new CustomerWriteDTO
+            {
+                Name = editCustomer.Name,
+                Email = editCustomer.Email
+            });
+
+        await LoadCustomers();
+        isEditing = false;
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+    }
+
+    private void PerformSearch()
+    {
+        FilterCustomers();
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = "";
+        FilterCustomers();
+    }
+}

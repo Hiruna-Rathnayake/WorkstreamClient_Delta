@@ -1,0 +1,208 @@
+﻿@page "/user/edit/{UserId:int}"
+@using WorkstreamClient.DTO
+@using WorkstreamClient.Services
+@inject UserService UserService
+@inject NavigationManager Navigation
+
+<style>
+    /* Main layout styles */
+    :root {
+        --primary-color: #3498db;
+        --primary-hover: #2980b9;
+        --error-color: #e74c3c;
+        --text-color: #333333;
+        --border-color: #dddddd;
+        --background-light: #f8f9fa;
+        --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: var(--text-color);
+        background-color: #f5f7fa;
+        line-height: 1.6;
+    }
+
+    h3 {
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid var(--primary-color);
+        font-weight: 600;
+    }
+
+    /* Form styles */
+    form {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        padding: 2rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .input-group {
+        margin-bottom: 1.5rem;
+    }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+    .input-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+
+        .input-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.25);
+        }
+
+    select.input-control {
+        height: 2.75rem;
+        background-color: white;
+        cursor: pointer;
+    }
+
+    /* Validation styles */
+    .validation-message {
+        color: var(--error-color);
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .validation-summary {
+        background-color: #fdedec;
+        border-left: 4px solid var(--error-color);
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border-radius: 4px;
+    }
+
+    /* Button styles */
+    .action-btn {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background-color 0.2s;
+    }
+
+    .create-btn {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+        .create-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+    /* Status message */
+    .status-msg {
+        background-color: #edf7fd;
+        border-left: 4px solid var(--primary-color);
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1.5rem;
+        font-weight: 500;
+    }
+
+    }
+</style>
+
+<h3>Edit User</h3>
+
+@if (userToEdit == null)
+{
+    <p class="status-msg">Loading user...</p>
+}
+else
+{
+    <EditForm Model="@userToEdit" OnValidSubmit="UpdateUser">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="input-group">
+            <label for="username">Username:</label>
+            <InputText id="username" class="input-control" @bind-Value="userToEdit.Username" />
+            <ValidationMessage For="@(() => userToEdit.Username)" />
+        </div>
+
+        <div class="input-group">
+            <label for="password">Password:</label>
+            <InputText id="password" type="password" class="input-control" @bind-Value="userToEdit.PasswordHash" />
+            <ValidationMessage For="@(() => userToEdit.PasswordHash)" />
+        </div>
+
+        <div class="input-group">
+            <label for="role">Role:</label>
+            <select id="role" class="input-control" @bind="userToEdit.RoleId">
+                <option value="">Select a role</option>
+                @foreach (var role in roles)
+                {
+                    <option value="@role.RoleId">@role.Name</option>
+                }
+            </select>
+        </div>
+
+        <button type="submit" class="action-btn create-btn">Update User</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int UserId { get; set; }
+    private UserUpdateDTO userToEdit;
+    private IEnumerable<RoleReadDTO> roles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Get the list of roles
+            roles = await UserService.GetAllRolesAsync();
+
+            // Get the user by ID (returns a UserReadDTO)
+            var userRead = await UserService.GetUserByIdAsync(UserId);
+
+            // Manually map UserReadDTO to UserUpdateDTO
+            userToEdit = new UserUpdateDTO
+                {
+                    Username = userRead.Username,
+                // Since UserReadDTO doesn't have PasswordHash, it won't be mapped here
+                    PasswordHash = string.Empty, // Initialize as empty or leave it for user to change
+                    RoleId = userRead.Role?.RoleId // Get RoleId from the Role object within UserReadDTO
+                };
+        }
+        catch (Exception ex)
+        {
+            // Handle errors here (e.g., logging or user-friendly message)
+        }
+    }
+
+    private async Task UpdateUser()
+    {
+        try
+        {
+            // Call the service to update the user
+            await UserService.UpdateUserAsync(UserId, userToEdit);
+
+            // Navigate to the user management page after the update
+            Navigation.NavigateTo("/usermanagement");
+        }
+        catch (Exception ex)
+        {
+            // Handle errors here (e.g., logging or user-friendly message)
+        }
+    }
+}

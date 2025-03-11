@@ -1,0 +1,368 @@
+﻿
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #f7f9fc;
+    color: #333;
+}
+
+/* Main layout */
+.erp-dashboard {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 240px;
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    padding: 0;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+}
+
+.company-logo {
+    padding: 20px;
+    background-color: #1a2530;
+    margin-bottom: 10px;
+}
+
+    .company-logo h2 {
+        font-size: 20px;
+        font-weight: 500;
+    }
+
+nav ul {
+    list-style: none;
+}
+
+    nav ul li {
+        margin-bottom: 2px;
+    }
+
+        nav ul li a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #ecf0f1;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+            nav ul li a i {
+                margin-right: 12px;
+                width: 20px;
+                text-align: center;
+            }
+
+        nav ul li:hover a {
+            background-color: #34495e;
+        }
+
+        nav ul li.active a {
+            background-color: #3498db;
+            color: white;
+        }
+
+/* Main content */
+.main-content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* Header */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.page-title h1 {
+    font-size: 24px;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.user-controls {
+    display: flex;
+    align-items: center;
+}
+
+.notifications {
+    margin-right: 20px;
+    position: relative;
+}
+
+    .notifications i {
+        font-size: 20px;
+        color: #7f8c8d;
+        cursor: pointer;
+    }
+
+.user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+    .user span {
+        font-weight: 500;
+    }
+
+    .user i {
+        font-size: 20px;
+        color: #7f8c8d;
+    }
+
+/* Summary cards */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+}
+
+.card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 20px;
+}
+
+    .card-icon i {
+        font-size: 24px;
+        color: white;
+    }
+
+.inventory-icon {
+    background-color: #3498db;
+}
+
+.sales-icon {
+    background-color: #2ecc71;
+}
+
+.purchase-icon {
+    background-color: #e74c3c;
+}
+
+.customers-icon {
+    background-color: #9b59b6;
+}
+
+.card-data h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #7f8c8d;
+    margin-bottom: 5px;
+}
+
+.card-data .number {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.card-data .detail {
+    font-size: 13px;
+    color: #95a5a6;
+}
+
+/* Data panels */
+.data-panels {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.panel {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.panel-header {
+    padding: 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+    .panel-header h2 {
+        font-size: 18px;
+        font-weight: 500;
+        color: #2c3e50;
+    }
+
+.panel-content {
+    padding: 0;
+}
+
+/* Data tables */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .data-table th, .data-table td {
+        padding: 12px 20px;
+        text-align: left;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .data-table th {
+        background-color: #fafafa;
+        font-weight: 600;
+        color: #7f8c8d;
+        font-size: 14px;
+    }
+
+    .data-table tr:last-child td {
+        border-bottom: none;
+    }
+
+/* Status indicators */
+.status-completed, .status-processing, .status-pending {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-completed {
+    background-color: #e8f7ef;
+    color: #2ecc71;
+}
+
+.status-processing {
+    background-color: #eaf4fd;
+    color: #3498db;
+}
+
+.status-pending {
+    background-color: #fef5e8;
+    color: #f39c12;
+}
+
+
+/* Add these styles to your dashboard.css file */
+
+/* Logout button container positioning at bottom of sidebar */
+.logout-container {
+    margin-top: auto;
+    padding: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 20px;
+}
+
+/* Make sidebar flex column to push logout to bottom */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 240px;
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    padding: 0;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+}
+
+/* Logout button styling */
+.logout-button {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: #e74c3c;
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: background-color 0.2s;
+    justify-content: center;
+}
+
+    .logout-button:hover {
+        background-color: #c0392b;
+    }
+
+    .logout-button i {
+        margin-right: 8px;
+    }
+
+/* Ensure nav takes available space to push logout to bottom */
+.sidebar nav {
+    flex: 1;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+    .erp-dashboard {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+
+    nav ul {
+        display: flex;
+        flex-wrap: wrap;
+        padding-bottom: 10px;
+    }
+
+        nav ul li {
+            margin-right: 5px;
+        }
+
+    .summary-cards {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .card {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .card-icon {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+
+    .data-table {
+        font-size: 14px;
+    }
+
+        .data-table th, .data-table td {
+            padding: 10px;
+        }
+}
+
+@media (min-width: 1200px) {
+    .data-panels {
+        grid-template-columns: 1fr 1fr;
+    }
+}

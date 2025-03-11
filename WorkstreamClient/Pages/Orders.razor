@@ -1,0 +1,383 @@
+﻿@page "/order"
+@using WorkstreamClient.DTO
+@using WorkstreamClient.Services
+@inject AuthenticationService AuthenticationService
+@inject NavigationManager NavigationManager
+@inject OrderService OrderService
+@inject InventoryService InventoryService
+@inject CustomerService CustomerService
+
+
+<HeadContent>
+    <link href="css/order.css" rel="stylesheet" />
+    <link href="css/mainlayout.css" rel="stylesheet" />
+</HeadContent>
+
+
+<div class="page-container">
+    <div class="card order-form-card">
+        <div class="card-header">
+            <h3>Create New Order</h3>
+        </div>
+        <div class="card-body">
+            <EditForm Model="@newOrder" OnValidSubmit="CreateOrder">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label>Customer</label>
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label for="searchQuery">Search Customer</label>
+                                <InputText @bind-Value="searchQuery" class="form-control" placeholder="Search by customer name" @oninput="OnSearchChanged" />
+                            </div>
+                        </div>
+
+                        <InputSelect @bind-Value="newOrder.CustomerId" class="form-control" aria-label="Select Customer">
+                            <option value="0">Select a customer</option>
+                            @foreach (var customer in filteredCustomers)
+                            {
+                                <option value="@customer.CustomerId">@customer.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>Order Date</label>
+                        <InputDate @bind-Value="newOrder.OrderDate" class="form-control" />
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>Status</label>
+                        <InputSelect @bind-Value="newOrder.Status" class="form-control">
+                            <option value="Pending">Pending</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Delivered">Delivered</option>
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="add-item-section">
+                    <div class="form-row">
+                        <div class="form-group col-md-5">
+                            <label>Item</label>
+                            <InputSelect @bind-Value="selectedInventoryItemId" class="form-control">
+                                <option value="0">Select an item</option>
+                                @foreach (var item in inventoryItems)
+                                {
+                                    <option value="@item.InventoryItemId">@item.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Quantity</label>
+                            <InputNumber @bind-Value="newOrderItem.Quantity" class="form-control" />
+                        </div>
+                        <div class="form-group col-md-2 d-flex align-items-end">
+                            <button type="button" class="btn btn-secondary btn-sm btn-block" @onclick="AddItemToOrder">Add Item</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Item Name</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (newOrder.ItemsToAdd == null || !newOrder.ItemsToAdd.Any())
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center">No items added to this order yet.</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var item in newOrder.ItemsToAdd)
+                                {
+                                    var inventoryItem = inventoryItems.FirstOrDefault(i => i.InventoryItemId == item.InventoryItemId);
+                                    <tr>
+                                        <td>@inventoryItem?.Name</td>
+                                        <td>@item.Quantity</td>
+                                        <td>$@item.Price.ToString("0.00")</td>
+                                        <td>$@((item.Quantity * item.Price).ToString("0.00"))</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-danger px-2 py-0" @onclick="() => RemoveItemFromOrder(item)">×</button>
+                                        </td>
+                                    </tr>
+                                }
+                                <tr class="table-total">
+                                    <td colspan="3" class="text-right"><strong>Order Total:</strong></td>
+                                    <td><strong>$@CalculateOrderTotal().ToString("0.00")</strong></td>
+                                    <td></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-sm">Create Order</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+
+    <div class="card orders-list-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3>All Orders</h3>
+        </div>
+        <div class="card-body p-0">
+            @if (isLoading)
+            {
+                <div class="loading-indicator">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <span class="ml-2">Loading orders...</span>
+                </div>
+            }
+            else if (allOrders.Count == 0)
+            {
+                <div class="empty-state">
+                    <p>No orders found.</p>
+                </div>
+            }
+            else
+            {
+                <div class="accordion" id="ordersAccordion">
+                    @foreach (var order in allOrders)
+                    {
+                        <div class="card order-card mb-0 border-0">
+                            <div class="card-header py-2" id="heading@(order.OrderId)">
+                                <button class="btn btn-link order-collapse-btn" type="button" data-toggle="collapse"
+                                        data-target="#collapse@(order.OrderId)" aria-expanded="false"
+                                        aria-controls="collapse@(order.OrderId)">
+                                    <div class="order-summary">
+                                        <span class="order-id">#@order.OrderId</span>
+                                        <span class="order-status status-@order.Status.ToLower()">@order.Status</span>
+                                        <span class="order-date">@order.OrderDate.ToString("MM/dd/yyyy")</span>
+                                        <span class="customer-id">Customer: @order.CustomerId</span>
+                                    </div>
+                                </button>
+                            </div>
+
+                            <div id="collapse@(order.OrderId)" class="collapse" aria-labelledby="heading@(order.OrderId)" data-parent="#ordersAccordion">
+                                <div class="card-body py-2">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm mb-2">
+                                            <thead>
+                                                <tr>
+                                                    <th>Item</th>
+                                                    <th>Qty</th>
+                                                    <th>Price</th>
+                                                    <th>Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @if (order.OrderItems != null && order.OrderItems.Any())
+                                                {
+                                                    @foreach (var item in order.OrderItems)
+                                                    {
+                                                        <tr>
+                                                            <td>@item.InventoryItemName</td>
+                                                            <td>@item.Quantity</td>
+                                                            <td>$@item.Price.ToString("0.00")</td>
+                                                            <td>$@((item.Quantity * item.Price).ToString("0.00"))</td>
+                                                        </tr>
+                                                    }
+                                                    <tr class="table-total">
+                                                        <td colspan="3" class="text-right"><strong>Total:</strong></td>
+                                                        <td><strong>$@(order.OrderItems.Sum(i => i.Quantity * i.Price).ToString("0.00"))</strong></td>
+                                                    </tr>
+                                                }
+                                                else
+                                                {
+                                                    <tr>
+                                                        <td colspan="4" class="text-center">No items in this order</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm" @onclick="() => ViewOrderDetails(order.OrderId)">View Details</button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private OrderWriteDTO newOrder = new OrderWriteDTO();
+    private OrderItemWriteDTO newOrderItem = new OrderItemWriteDTO();
+    private List<InventoryItemReadDTO> inventoryItems = new List<InventoryItemReadDTO>();
+    private List<OrderReadDTO> allOrders = new List<OrderReadDTO>();
+    private List<CustomerReadDTO> customers = new List<CustomerReadDTO>();
+    private List<CustomerReadDTO> filteredCustomers = new List<CustomerReadDTO>();
+    private int selectedInventoryItemId = 0;
+    private bool isLoading = true;
+    private string searchQuery = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        newOrder = new OrderWriteDTO
+            {
+                OrderDate = DateTime.Now,
+                Status = "Pending",
+                ItemsToAdd = new List<OrderItemWriteDTO>(),
+                ItemsToRemove = new List<int>()
+            };
+
+        // Load inventory items and orders in parallel
+        var inventoryTask = InventoryService.GetAllInventoryItemsAsync();
+        var ordersTask = LoadOrdersAsync();
+        var customersTask = LoadCustomersAsync();
+
+        inventoryItems = await inventoryTask;
+        await Task.WhenAll(ordersTask, customersTask);
+    }
+
+    private async Task LoadCustomersAsync()
+    {
+        try
+        {
+            customers = await CustomerService.GetAllCustomersAsync();
+            FilterCustomers(); // Initial filter to show all customers
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading customers: {ex.Message}");
+        }
+    }
+
+    private void FilterCustomers()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredCustomers = customers;
+        }
+        else
+        {
+            filteredCustomers = customers.Where(c => c.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+    }
+
+
+    private async Task LoadOrdersAsync()
+    {
+        try
+        {
+            isLoading = true;
+            allOrders = await OrderService.GetAllOrdersAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading orders: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void AddItemToOrder()
+    {
+        var selectedItem = inventoryItems.FirstOrDefault(i => i.InventoryItemId == selectedInventoryItemId);
+
+        if (selectedItem == null || selectedInventoryItemId == 0)
+        {
+            Console.WriteLine("No inventory item selected");
+            return;
+        }
+
+        if (newOrderItem.Quantity <= 0)
+        {
+            Console.WriteLine("Quantity must be greater than zero");
+            return;
+        }
+
+        var orderItem = new OrderItemWriteDTO
+            {
+                InventoryItemId = selectedInventoryItemId,
+                Quantity = newOrderItem.Quantity,
+                Price = selectedItem.Price
+            };
+
+        if (newOrder.ItemsToAdd == null)
+        {
+            newOrder.ItemsToAdd = new List<OrderItemWriteDTO>();
+        }
+
+        newOrder.ItemsToAdd.Add(orderItem);
+        ResetOrderItem();
+    }
+
+    private void RemoveItemFromOrder(OrderItemWriteDTO item)
+    {
+        newOrder.ItemsToAdd.Remove(item);
+    }
+
+    private async Task CreateOrder()
+    {
+        if (newOrder.ItemsToAdd == null || !newOrder.ItemsToAdd.Any())
+        {
+            Console.WriteLine("No items in the order to create");
+            return;
+        }
+
+        try
+        {
+            await OrderService.CreateOrderAsync(newOrder);
+
+            // Reset form
+            newOrder = new OrderWriteDTO
+                {
+                    OrderDate = DateTime.Now,
+                    Status = "Pending",
+                    ItemsToAdd = new List<OrderItemWriteDTO>(),
+                    ItemsToRemove = new List<int>()
+                };
+            ResetOrderItem();
+            selectedInventoryItemId = 0;
+
+            // Refresh orders list
+            await LoadOrdersAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating order: {ex.Message}");
+        }
+    }
+
+    private void ResetOrderItem()
+    {
+        newOrderItem = new OrderItemWriteDTO();
+        selectedInventoryItemId = 0;
+    }
+
+    private decimal CalculateOrderTotal()
+    {
+        return newOrder.ItemsToAdd?.Sum(item => item.Quantity * item.Price) ?? 0;
+    }
+
+    private void ViewOrderDetails(int orderId)
+    {
+        NavigationManager.NavigateTo($"/order/{orderId}");
+    }
+
+    private void OnSearchChanged(ChangeEventArgs e)
+    {
+        searchQuery = e.Value.ToString();
+        FilterCustomers();
+    }
+
+}

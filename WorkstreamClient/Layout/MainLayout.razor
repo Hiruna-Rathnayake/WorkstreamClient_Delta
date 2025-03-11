@@ -1,0 +1,126 @@
+﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components
+@using System.Security.Claims
+@using WorkstreamClient.Services
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject AuthenticationService AuthService
+
+<HeadContent>
+    <link href="css/mainlayout.css" rel="stylesheet" />
+</HeadContent>
+
+<div class="erp-dashboard">
+    <div class="sidebar">
+        <div class="company-logo">
+            <h2>ERP System</h2>
+        </div>
+        <nav>
+            <ul>
+                <li><NavLink href="/dashboard" class="nav-link" activeClassName="active"><i class="oi oi-home"></i> Dashboard</NavLink></li>
+                <li><NavLink href="/inventory" class="nav-link" activeClassName="active"><i class="oi oi-box"></i> Inventory</NavLink></li>
+                <li><NavLink href="/usermanagement" class="nav-link" activeClassName="active"><i class="oi oi-document"></i> Users</NavLink></li>
+                <li><NavLink href="/customers" class="nav-link" activeClassName="active"><i class="oi oi-document"></i> Customers</NavLink></li>
+                <li><NavLink href="/order" class="nav-link" activeClassName="active"><i class="oi oi-document"></i> Orders</NavLink></li>
+                <!-- Add other links here -->
+            </ul>
+        </nav>
+        <div class="logout-container">
+            <a href="#" class="logout-button" @onclick="Logout"><i class="oi oi-account-logout"></i> Logout</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <header>
+            <div class="page-title">
+                <h1>@PageTitle</h1>
+            </div>
+            <div class="user-controls">
+                <div class="notifications">
+                    <i class="oi oi-bell"></i>
+                </div>
+                <div class="user">
+                    <div class="user-info">
+                        <span class="user-name">@UserName</span>
+                        <span class="user-role">@UserRole</span>
+                    </div>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+            </div>
+        </header>
+
+        <div style="padding: 0 20px;">
+            <!-- Breadcrumb as part of the main content area -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    @foreach (var segment in BreadcrumbSegments)
+                    {
+                        <li class="breadcrumb-item">@segment</li>
+                    }
+                </ol>
+            </nav>
+
+            @Body
+        </div>
+    </div>
+</div>
+
+@code {
+    private string UserName { get; set; }
+    private string UserRole { get; set; }
+    private List<string> BreadcrumbSegments { get; set; } = new List<string>();
+    private string PageTitle { get; set; } = "Dashboard";
+
+    // Override the OnInitializedAsync to fetch user details and breadcrumbs
+    protected override async Task OnInitializedAsync()
+    {
+        // Fetch the authentication state
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        // Set the username and role based on the claims
+        UserName = user.Identity?.Name ?? "Guest"; // Default to "Guest" if no user is logged in
+        var roleClaim = user.FindFirst(c => c.Type == ClaimTypes.Role);
+        Console.WriteLine($"Raw Role Claim: {roleClaim}");
+
+        if (roleClaim != null)
+        {
+            UserRole = roleClaim.Value;
+        }
+        else
+        {
+            UserRole = "No Role";
+        }
+        Console.WriteLine("All Claims:");
+        foreach (var claim in user.Claims)
+        {
+            Console.WriteLine($"Claim Type: {claim.Type}, Claim Value: {claim.Value}");
+        }
+
+        Console.WriteLine($"Final Assigned Role: {UserRole}");
+
+
+
+
+        // Generate breadcrumb from the current URL (splitting by '/')
+        var segments = NavigationManager.Uri.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+        BreadcrumbSegments = segments.Select(s => CapitalizeFirstLetter(s)).ToList();
+
+        // Optionally set the page title based on the last breadcrumb or default to "Dashboard"
+        PageTitle = BreadcrumbSegments.LastOrDefault() ?? "Dashboard";
+    }
+
+    // Helper function to capitalize the first letter of each breadcrumb segment
+    private string CapitalizeFirstLetter(string segment)
+    {
+        return string.IsNullOrEmpty(segment) ? string.Empty : char.ToUpper(segment[0]) + segment.Substring(1);
+    }
+
+    // Logout logic to clear user session
+    private async Task Logout()
+    {
+        await AuthService.Logout();
+    }
+}

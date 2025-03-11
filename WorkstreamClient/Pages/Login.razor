@@ -1,0 +1,182 @@
+﻿@page "/login"
+@inject AuthenticationService AuthService
+@inject NavigationManager NavigationManager
+@using WorkstreamClient.Services
+@using WorkstreamClient.DTO
+
+<div class="login-container">
+    <div class="login-card">
+        <h3 class="login-title">Sign In</h3>
+
+        <EditForm Model="loginDto" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> @errorMessage
+                </div>
+            }
+
+            <div class="form-group">
+                <label for="username">Username</label>
+                <InputText id="username" class="form-control" @bind-Value="loginDto.Username" />
+                <ValidationMessage For="@(() => loginDto.Username)" class="validation-message" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <InputText id="password" class="form-control" @bind-Value="loginDto.Password" type="password" />
+                <ValidationMessage For="@(() => loginDto.Password)" class="validation-message" />
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Login</button>
+            </div>
+
+            <div class="form-links">
+                <a href="/forgot-password">Forgot Password?</a>
+                <a href="/register">Create Account</a>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+<style>
+    /* Login page styling */
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+        padding: 20px;
+        background-color: #f8f9fa;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 400px;
+        padding: 30px;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .login-title {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #2c3e50;
+        font-weight: 600;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #495057;
+        }
+
+    .form-control {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+        .form-control:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            outline: 0;
+        }
+
+    .btn-primary {
+        width: 100%;
+        padding: 12px;
+        background-color: #3498db;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.15s ease-in-out;
+    }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+
+    .alert {
+        padding: 12px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .validation-message {
+        color: #dc3545;
+        font-size: 0.85rem;
+        margin-top: 5px;
+        display: block;
+    }
+
+    .form-links {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 15px;
+        font-size: 0.9rem;
+    }
+
+        .form-links a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+            .form-links a:hover {
+                text-decoration: underline;
+            }
+</style>
+
+@code {
+    private LoginDTO loginDto = new LoginDTO();
+    private string errorMessage = string.Empty;
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            var token = await AuthService.LoginAsync(loginDto);
+            if (token != null)
+            {
+                // If login successful, navigate to the dashboard
+                NavigationManager.NavigateTo("/dashboard");
+            }
+            else
+            {
+                // If login fails, display an error message
+                errorMessage = "Invalid username or password. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle specific exceptions with more descriptive error messages
+            if (ex.Message.Contains("connection"))
+            {
+                errorMessage = "Unable to connect to the server. Please check your internet connection.";
+            }
+            else
+            {
+                errorMessage = "An error occurred during login. Please try again later.";
+            }
+        }
+    }
+}

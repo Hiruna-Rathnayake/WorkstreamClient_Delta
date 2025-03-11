@@ -1,0 +1,342 @@
+﻿@page "/inventory"
+@using WorkstreamClient.DTO
+@using WorkstreamClient.Services
+@inject InventoryService InventoryService
+@inject StockService StockService
+@inject AuthenticationService AuthenticationService
+@inject NavigationManager NavigationManager
+
+<HeadContent>
+    <link href="css/inventory.css" rel="stylesheet" />
+    <link href="css/mainlayout.css" rel="stylesheet" />
+</HeadContent>
+
+@if (!hasPermission)
+{
+    <div class="modal-overlay">
+        <div class="modal-content">
+            <h2>Access Denied</h2>
+            <p>You do not have permission to view this page.</p>
+            <button @onclick="GoToDashboard" class="btn btn-primary">Return to Dashboard</button>
+        </div>
+    </div>
+}
+
+
+<div class="inventory-container">
+    <h3 class="page-title">Inventory Management</h3>
+
+    <div class="columns">
+        <div class="column">
+            <!-- Create Inventory Item -->
+            <div class="section">
+                <h4 class="section-title">Create New Inventory Item</h4>
+                <EditForm Model="@newItem" OnValidSubmit="CreateInventoryItem">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <InputText @bind-Value="newItem.Name" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <InputText @bind-Value="newItem.Description" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Price</label>
+                        <InputNumber @bind-Value="newItem.Price" class="form-control" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Create Item</button>
+                </EditForm>
+            </div>
+
+            <!-- Create Stock for Inventory Item -->
+            <div class="section">
+                <h4 class="section-title">Create New Stock for Inventory Item</h4>
+                <EditForm Model="@newStock" OnValidSubmit="CreateStock">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="form-group">
+                        <label class="form-label">Inventory Item</label>
+                        <InputSelect @bind-Value="newStock.InventoryItemId" class="form-control">
+                            @if (inventoryItems != null && inventoryItems.Any())
+                            {
+                                @foreach (var item in inventoryItems)
+                                {
+                                    <option value="@item.InventoryItemId">@item.Name</option>
+                                }
+                            }
+                            else
+                            {
+                                <option disabled>Loading inventory items...</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Quantity</label>
+                        <InputNumber @bind-Value="newStock.Quantity" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Manufacturing Date</label>
+                        <InputDate @bind-Value="newStock.ManufacturingDate" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Expiration Date</label>
+                        <InputDate @bind-Value="newStock.ExpirationDate" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Batch Number</label>
+                        <InputText @bind-Value="newStock.BatchNumber" class="form-control" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Create Stock</button>
+                </EditForm>
+            </div>
+        </div>
+
+        <div class="column">
+            <!-- Search Box and Buttons -->
+            <div class="search-container">
+                <input type="text" @bind="searchQuery" placeholder="Search inventory..." class="form-control" />
+                <button @onclick="PerformSearch" class="btn btn-primary">Search</button>
+                <button @onclick="ClearSearch" class="btn btn-secondary">Clear</button>
+            </div>
+
+            <!-- Inventory Items List -->
+            <div class="scrollable-container">
+                <ul class="inventory-list">
+                    @foreach (var item in filteredInventoryItems.Take(itemsToShow))
+                    {
+                        <li class="inventory-item">
+                            <div class="item-details">
+                                <strong>@item.Name</strong> - $@item.Price.ToString("0.00")
+                            </div>
+                            <div class="item-actions">
+                                <button @onclick="() => DeleteInventoryItem(item.InventoryItemId)" class="btn btn-danger">Delete</button>
+                                <button @onclick="() => EditInventoryItem(item.InventoryItemId)" class="btn btn-secondary">Edit</button>
+                                <button @onclick="() => LoadStockForItem(item.InventoryItemId)" class="btn btn-info">View Stock</button>
+                            </div>
+                        </li>
+                    }
+                </ul>
+
+                @if (itemsToShow < filteredInventoryItems.Count)
+                {
+                    <button class="btn btn-primary" @onclick="LoadMoreItems">Load More</button>
+                }
+            </div>
+
+            <!-- Stock Items for a Selected Inventory Item -->
+            @if (selectedInventoryItem != null && selectedInventoryItem.Stocks != null)
+            {
+                <div class="section">
+                    <h4 class="section-title">Stock for @selectedInventoryItem.Name</h4>
+                    <ul class="inventory-list">
+                        @foreach (var stock in selectedInventoryItem.Stocks)
+                        {
+                            <li class="stock-item">
+                                <div class="stock-details">
+                                    <div><span class="badge badge-primary">Batch: @stock.BatchNumber</span></div>
+                                    <div>Quantity: @stock.Quantity</div>
+                                    <div>Expiration: @stock.ExpirationDate.ToShortDateString()</div>
+                                </div>
+                                <button @onclick="() => DeleteStock(stock.StockId)" class="btn btn-danger">Delete</button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Edit Inventory Item Modal -->
+    @if (isEditing)
+    {
+        <div class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Edit Inventory Item</h4>
+                    <button class="close-button" @onclick="CancelEdit">&times;</button>
+                </div>
+                <EditForm Model="@editItem" OnValidSubmit="UpdateInventoryItem">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <InputText @bind-Value="editItem.Name" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <InputText @bind-Value="editItem.Description" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Price</label>
+                        <InputNumber @bind-Value="editItem.Price" class="form-control" />
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button type="button" class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update Item</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private InventoryItemWriteDTO newItem = new InventoryItemWriteDTO();
+    private List<InventoryItemReadDTO> inventoryItems = new List<InventoryItemReadDTO>(); // Initialize to avoid null
+    private StockWriteDTO newStock = new StockWriteDTO();
+    private InventoryItemReadDTO selectedInventoryItem;
+    private InventoryItemReadDTO editItem;
+    private bool isEditing = false;
+    private string searchQuery = "";
+    private int itemsToShow = 20; // Limit initial items
+    private int itemsIncrement = 10; // How many more to load each time
+    private List<InventoryItemReadDTO> filteredInventoryItems = new List<InventoryItemReadDTO>();
+
+    private bool hasPermission = true; // Assume the user has permission initially
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadInventoryItems();
+        }
+        catch (PermissionDeniedException)
+        {
+            hasPermission = false; // Mark permission as denied
+        }
+        catch (Exception ex)
+        {
+            hasPermission = false;
+            Console.WriteLine($"Error loading inventory: {ex.Message}");
+        }
+    }
+
+
+
+    private async Task LoadInventoryItems()
+    {
+        inventoryItems = await InventoryService.GetAllInventoryItemsAsync();
+        FilterInventoryItems(); // Apply initial filtering
+    }
+
+    private void FilterInventoryItems()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredInventoryItems = inventoryItems; // Show all if no search query
+        }
+        else
+        {
+            filteredInventoryItems = inventoryItems
+                .Where(item => item.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        itemsToShow = 20; // Reset item count on search
+    }
+
+    private async Task CreateInventoryItem()
+    {
+        await InventoryService.CreateInventoryItemAsync(newItem);
+        await LoadInventoryItems(); // Reload inventory items after creating
+        newItem = new InventoryItemWriteDTO(); // Reset the form
+    }
+
+    private async Task DeleteInventoryItem(int itemId)
+    {
+        await InventoryService.DeleteInventoryItemAsync(itemId);
+        await LoadInventoryItems(); // Reload inventory items after deletion
+    }
+
+    private async Task EditInventoryItem(int itemId)
+    {
+        var item = await InventoryService.GetInventoryItemByIdAsync(itemId);
+        editItem = new InventoryItemReadDTO
+            {
+                InventoryItemId = item.InventoryItemId,
+                Name = item.Name,
+                Description = item.Description,
+                Price = item.Price
+            };
+        isEditing = true;
+    }
+
+    private void LoadMoreItems()
+    {
+        itemsToShow += itemsIncrement;
+    }
+
+    private async Task UpdateInventoryItem()
+    {
+        await InventoryService.UpdateInventoryItemAsync(editItem.InventoryItemId, new InventoryItemWriteDTO
+            {
+                Name = editItem.Name,
+                Description = editItem.Description,
+                Price = editItem.Price
+            });
+
+        await LoadInventoryItems(); // Reload inventory items after updating
+        isEditing = false;
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+    }
+
+    private async Task LoadStockForItem(int itemId)
+    {
+        selectedInventoryItem = inventoryItems.FirstOrDefault(i => i.InventoryItemId == itemId);
+        // Stocks are already part of InventoryItemReadDTO, so no need for additional fetching
+    }
+
+    private async Task CreateStock()
+    {
+        if (newStock.InventoryItemId == 0)
+        {
+            // Show an error or message that an item needs to be selected
+            Console.WriteLine("Please select an inventory item before creating stock.");
+            return;
+        }
+
+        await StockService.CreateStockAsync(newStock);
+        // After creating stock, reload the stock for the selected inventory item
+        await LoadStockForItem(newStock.InventoryItemId);
+        newStock = new StockWriteDTO(); // Reset the form
+    }
+
+
+    private async Task DeleteStock(int stockId)
+    {
+        await StockService.DeleteStockAsync(stockId);
+        if (selectedInventoryItem != null)
+        {
+            await LoadStockForItem(selectedInventoryItem.InventoryItemId); // Reload stock for selected item
+        }
+    }
+
+    // Search logic
+    private void PerformSearch()
+    {
+        FilterInventoryItems();
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = "";
+        FilterInventoryItems(); // Reset the items to show all
+    }
+
+    private void GoToDashboard()
+    {
+        NavigationManager.NavigateTo("/dashboard");
+    }
+
+}

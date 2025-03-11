@@ -1,0 +1,323 @@
+﻿@page "/usermanagement"
+@using WorkstreamClient.DTO
+@using WorkstreamClient.Services
+@inject UserService UserService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<HeadContent>
+    <link href="css/usermanagementv1.css" rel="stylesheet" />
+    <link href="css/mainlayout.css" rel="stylesheet" />
+</HeadContent>
+
+<div class="user-mgmt-page">
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-msg">@errorMessage</div>
+    }
+
+    <div class="section users-section">
+        <div class="section-header">
+            <h3>Users</h3>
+        </div>
+
+        @if (users == null)
+        {
+            <p class="status-msg">Loading...</p>
+        }
+        else if (!users.Any())
+        {
+            <p>No users available.</p>
+        }
+        else
+        {
+            <div class="table-container">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Permissions</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in users)
+                        {
+                            <tr>
+                                <td>@user.UserId</td>
+                                <td>@user.Username</td>
+                                <td>@(string.IsNullOrEmpty(user.Role?.Name) ? "No Role" : user.Role.Name)</td>
+                                <td>
+                                    @if (user.Role != null)
+                                    {
+                                        // Get the role details from the roles collection (rroles)
+                                        var role = rroles.FirstOrDefault(r => r.RoleId == user.Role.RoleId);
+
+                                        if (role != null && role.PermissionNames != null && role.PermissionNames.Any())
+                                        {
+                                            <ul class="permission-list">
+                                                @foreach (var permission in role.PermissionNames)
+                                                {
+                                                    <li>@permission</li>
+                                                }
+                                            </ul>
+                                        }
+                                        else
+                                        {
+                                            <span class="no-data">None</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="no-data">No Role</span>
+                                    }
+                                </td>
+
+                                <td>
+                                    <div class="actions-container">
+                                        <button class="action-btn edit-btn" @onclick="() => EditUser(user.UserId)">Edit</button>
+                                        <button class="action-btn delete-btn" @onclick="() => DeleteUser(user.UserId)">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="section roles-section">
+        <div class="section-header">
+            <h3>Roles</h3>
+        </div>
+
+        @if (roles == null)
+        {
+            <p class="status-msg">Loading roles...</p>
+        }
+        else if (!roles.Any())
+        {
+            <p>No roles available.</p>
+        }
+        else
+        {
+            <div class="table-container">
+                <table class="role-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Permissions</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var rrole in rroles)
+                        {
+                            <tr>
+                                <td>@rrole.RoleId</td>
+                                <td>@rrole.Name</td>
+                                <td>
+                                    @if (rrole.PermissionNames != null && rrole.PermissionNames.Any())
+                                    {
+                                        <ul class="permission-list">
+                                            @foreach (var permission in rrole.PermissionNames)
+                                            {
+                                                <li>@permission</li>
+                                            }
+                                        </ul>
+                                    }
+                                    else
+                                    {
+                                        <span class="no-data">None</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="actions-container">
+                                        <button class="action-btn edit-btn" @onclick="() => EditRole(rrole.RoleId)">Edit</button>
+                                        <button class="action-btn delete-btn">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="forms-container">
+        <div class="form-section">
+            <h3>Create User</h3>
+            <EditForm Model="@newUser" OnValidSubmit="CreateUser">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="input-group">
+                    <label for="username">Username</label>
+                    <InputText id="username" class="input-control" @bind-Value="newUser.Username" />
+                    <ValidationMessage For="@(() => newUser.Username)" />
+                </div>
+
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <InputText id="password" type="password" class="input-control" @bind-Value="newUser.PasswordHash" />
+                    <ValidationMessage For="@(() => newUser.PasswordHash)" />
+                </div>
+
+                <div class="input-group">
+                    <label for="role">Role</label>
+                    <select id="role" class="input-control" @bind="newUser.RoleId">
+                        <option value="">Select a role</option>
+                        @foreach (var role in roles)
+                        {
+                            <option value="@role.RoleId">@role.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" class="action-btn create-btn">Create User</button>
+                @if (isCreating)
+                {
+                    <span class="status-msg">Creating user...</span>
+                }
+            </EditForm>
+        </div>
+
+        <div class="form-section">
+            <h3>Create Role</h3>
+            <EditForm Model="@newRole" OnValidSubmit="CreateRole">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="input-group">
+                    <label for="roleName">Role Name</label>
+                    <InputText id="roleName" class="input-control" @bind-Value="newRole.Name" />
+                </div>
+
+                <div class="input-group">
+                    <label>Permissions</label>
+                    <div class="permission-checks">
+                        @foreach (var permission in permissions)
+                        {
+                            <div class="checkbox-item">
+                                <InputCheckbox id="@permission.Name" @bind-Value="permission.IsSelected" />
+                                <label for="@permission.Name">@permission.Name</label>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <button type="submit" class="action-btn create-btn">Create Role</button>
+                @if (isCreatingRole)
+                {
+                    <span class="status-msg">Creating role...</span>
+                }
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IEnumerable<UserReadDTO> users = new List<UserReadDTO>();
+    private UserWriteDTO newUser = new UserWriteDTO();
+    private RoleWriteDTO newRole = new RoleWriteDTO();
+    private bool isCreating = false;
+    private bool isCreatingRole = false;
+    private string errorMessage;
+    private IEnumerable<RoleReadDTO> roles = new List<RoleReadDTO>();
+    private IEnumerable<RoleWithPermissionsDTO> rroles = new List<RoleWithPermissionsDTO>();
+    private IEnumerable<PermissionReadDTO> permissions = new List<PermissionReadDTO>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            newUser = new UserWriteDTO();
+            users = await UserService.GetAllUsersAsync();
+            roles = await UserService.GetAllRolesAsync();
+            rroles = await UserService.GetRolesWithPermissionsAsync();
+            permissions = await UserService.GetAllPermissionsAsync();
+            await JSRuntime.InvokeVoidAsync("console.log", rroles);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading data: {ex.Message}";
+        }
+    }
+
+    private async Task CreateUser()
+    {
+        isCreating = true;
+        try
+        {
+            var createdUser = await UserService.CreateUserAsync(newUser);
+            users = users.Append(createdUser);
+            newUser = new UserWriteDTO();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating user: {ex.Message}";
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private async Task CreateRole()
+    {
+        isCreatingRole = true;
+        try
+        {
+            newRole.PermissionNames = permissions.Where(p => p.IsSelected).Select(p => p.Name).ToList();
+            var createdRole = await UserService.CreateRoleAsync(newRole);
+            roles = roles.Append(createdRole);
+            newRole = new RoleWriteDTO();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating role: {ex.Message}";
+        }
+        finally
+        {
+            isCreatingRole = false;
+        }
+    }
+
+    private void EditUser(int userId)
+    {
+        Navigation.NavigateTo($"/user/edit/{userId}");
+    }
+
+    private async Task DeleteUser(int userId)
+    {
+        bool confirmed = await ConfirmDelete();
+        if (confirmed)
+        {
+            try
+            {
+                await UserService.DeleteUserAsync(userId);
+                users = await UserService.GetAllUsersAsync();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting user: {ex.Message}";
+            }
+        }
+    }
+
+    private async Task<bool> ConfirmDelete()
+    {
+        return await JSRuntime.InvokeAsync<bool>("confirmDelete", "Are you sure you want to delete this user?");
+    }
+
+    private void EditRole(int roleId)
+    {
+        Navigation.NavigateTo($"/role/edit/{roleId}");
+    }
+}
