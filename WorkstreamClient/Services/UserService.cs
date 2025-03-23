@@ -23,8 +23,6 @@ namespace WorkstreamClient.Services
         public async Task<UserReadDTO> CreateUserAsync(UserWriteDTO userDTO)
         {
             var token = await _authenticationService.GetTokenAsync();
-
-            // Add token to request headers
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var response = await _httpClient.PostAsJsonAsync("api/user", userDTO);
@@ -40,83 +38,62 @@ namespace WorkstreamClient.Services
             }
         }
 
-
         public async Task<IEnumerable<RoleReadDTO>> GetAllRolesAsync()
         {
             try
             {
-                // Get the token using the AuthenticationService
-                var token = await _authenticationService.GetTokenAsync();  // Use AuthenticationService to get the token
-
+                var token = await _authenticationService.GetTokenAsync();
                 if (string.IsNullOrEmpty(token))
                 {
                     throw new Exception("Token is missing or expired.");
                 }
 
-                var requestMessage = new HttpRequestMessage(HttpMethod.Get, "api/Role");
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-                // Add the Authorization header with the Bearer token
-                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-                var response = await _httpClient.SendAsync(requestMessage);
+                var response = await _httpClient.GetAsync("api/Role");
 
                 if (response.IsSuccessStatusCode)
                 {
-                    // Map the response to a list of RoleReadDTOs if the response is successful
                     return await response.Content.ReadFromJsonAsync<IEnumerable<RoleReadDTO>>();
                 }
                 else
                 {
-                    // Log error with status code for better debugging
                     var errorContent = await response.Content.ReadAsStringAsync();
                     throw new Exception($"Error retrieving roles: {response.StatusCode}. {errorContent}");
                 }
             }
             catch (Exception ex)
             {
-                // Log or handle the exception as needed
                 throw new Exception("An error occurred while retrieving roles.", ex);
             }
         }
-
 
         public async Task<IEnumerable<RoleWithPermissionsDTO>> GetRolesWithPermissionsAsync()
         {
             try
             {
-                // Get the token using the AuthenticationService
-                var token = await _authenticationService.GetTokenAsync();  // Use AuthenticationService to get the token
-
+                var token = await _authenticationService.GetTokenAsync();
                 if (string.IsNullOrEmpty(token))
                 {
                     throw new Exception("Token is missing or expired.");
                 }
 
-                // Create the request message with tenantId as query parameter
-                var requestMessage = new HttpRequestMessage(HttpMethod.Get, "api/Role/with-permissions");
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-                // Add the Authorization header with the Bearer token
-                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                var response = await _httpClient.GetAsync("api/Role/with-permissions");
 
-                // Send the request
-                var response = await _httpClient.SendAsync(requestMessage);
-
-                // Check if the response is successful
                 if (response.IsSuccessStatusCode)
                 {
-                    // Deserialize the response content to the list of RoleWithPermissionsDTOs
                     return await response.Content.ReadFromJsonAsync<IEnumerable<RoleWithPermissionsDTO>>();
                 }
                 else
                 {
-                    // Log error with status code for better debugging
                     var errorContent = await response.Content.ReadAsStringAsync();
                     throw new Exception($"Error retrieving roles with permissions: {response.StatusCode}. {errorContent}");
                 }
             }
             catch (Exception ex)
             {
-                // Log or handle the exception as needed
                 throw new Exception("An error occurred while retrieving roles with permissions.", ex);
             }
         }
@@ -125,36 +102,38 @@ namespace WorkstreamClient.Services
         {
             try
             {
-                // Create the request message to fetch a role by its ID
-                var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"api/Role/{roleId}");
+                var token = await _authenticationService.GetTokenAsync();
+                if (string.IsNullOrEmpty(token))
+                {
+                    throw new Exception("Token is missing or expired.");
+                }
 
-                // Send the request
-                var response = await _httpClient.SendAsync(requestMessage);
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-                // Check if the response is successful
+                var response = await _httpClient.GetAsync($"api/Role/{roleId}");
+
                 if (response.IsSuccessStatusCode)
                 {
-                    // Deserialize the response content to a RoleReadDTO
                     return await response.Content.ReadFromJsonAsync<RoleWithPermissionsDTO>();
                 }
                 else
                 {
-                    // Log error with status code for better debugging
                     var errorContent = await response.Content.ReadAsStringAsync();
                     throw new Exception($"Error retrieving role by ID {roleId}: {response.StatusCode}. {errorContent}");
                 }
             }
             catch (Exception ex)
             {
-                // Log or handle the exception as needed
                 throw new Exception($"An error occurred while retrieving role with ID {roleId}.", ex);
             }
         }
 
-
         // Get a User by ID
         public async Task<UserReadDTO> GetUserByIdAsync(int userId)
         {
+            var token = await _authenticationService.GetTokenAsync();
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
             var response = await _httpClient.GetAsync($"api/user/{userId}");
 
             if (response.IsSuccessStatusCode)
@@ -172,20 +151,15 @@ namespace WorkstreamClient.Services
         {
             try
             {
-                // Get the token using the AuthenticationService
-                var token = await _authenticationService.GetTokenAsync();  // Use AuthenticationService to get the token
-
+                var token = await _authenticationService.GetTokenAsync();
                 if (string.IsNullOrEmpty(token))
                 {
                     throw new Exception("Token is missing or expired.");
                 }
 
-                var requestMessage = new HttpRequestMessage(HttpMethod.Get, "api/user");
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-                // Add the Authorization header with the Bearer token
-                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-                var response = await _httpClient.SendAsync(requestMessage);
+                var response = await _httpClient.GetAsync("api/user");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -193,23 +167,22 @@ namespace WorkstreamClient.Services
                 }
                 else
                 {
-                    // Log error with status code for better debugging
                     var errorContent = await response.Content.ReadAsStringAsync();
                     throw new Exception($"Error retrieving users: {response.StatusCode}. {errorContent}");
                 }
             }
             catch (Exception ex)
             {
-                // Consider logging the exception or handling it more gracefully
                 throw new Exception("An error occurred while retrieving users.", ex);
             }
         }
 
-
-
         // Update an existing User
         public async Task<UserReadDTO> UpdateUserAsync(int userId, UserUpdateDTO updatedUserDTO)
         {
+            var token = await _authenticationService.GetTokenAsync();
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
             var response = await _httpClient.PutAsJsonAsync($"api/user/{userId}", updatedUserDTO);
 
             if (response.IsSuccessStatusCode)
@@ -225,6 +198,9 @@ namespace WorkstreamClient.Services
         // Delete a User
         public async Task DeleteUserAsync(int userId)
         {
+            var token = await _authenticationService.GetTokenAsync();
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
             var response = await _httpClient.DeleteAsync($"api/user/{userId}");
 
             if (!response.IsSuccessStatusCode)
@@ -235,6 +211,9 @@ namespace WorkstreamClient.Services
 
         public async Task<IEnumerable<PermissionReadDTO>> GetAllPermissionsAsync()
         {
+            var token = await _authenticationService.GetTokenAsync();
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
             var response = await _httpClient.GetAsync("api/Permission");
 
             if (response.IsSuccessStatusCode)
@@ -250,10 +229,7 @@ namespace WorkstreamClient.Services
         // Create a new Role
         public async Task<RoleReadDTO> CreateRoleAsync(RoleWriteDTO roleDTO)
         {
-            // Get the token from AuthenticationService
             var token = await _authenticationService.GetTokenAsync();
-
-            // Add token to request headers
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var response = await _httpClient.PostAsJsonAsync("api/Role", roleDTO);
@@ -269,10 +245,12 @@ namespace WorkstreamClient.Services
             }
         }
 
-
         // Update an existing Role
         public async Task<RoleReadDTO> UpdateRoleAsync(int roleId, RoleWriteDTO updatedRoleDTO)
         {
+            var token = await _authenticationService.GetTokenAsync();
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
             var response = await _httpClient.PutAsJsonAsync($"api/Role/{roleId}", updatedRoleDTO);
 
             if (response.IsSuccessStatusCode)
@@ -288,6 +266,9 @@ namespace WorkstreamClient.Services
         // Delete a Role
         public async Task DeleteRoleAsync(int roleId)
         {
+            var token = await _authenticationService.GetTokenAsync();
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
             var response = await _httpClient.DeleteAsync($"api/Role/{roleId}");
 
             if (!response.IsSuccessStatusCode)
@@ -295,6 +276,5 @@ namespace WorkstreamClient.Services
                 throw new Exception("Error deleting role.");
             }
         }
-
     }
 }

@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.Components
 @using System.Security.Claims
 @using WorkstreamClient.Services
+@implements IDisposable
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
@@ -34,7 +35,7 @@
 
     <div class="main-content">
         <header>
-            <div class="page-title">
+            <div class="page-title111">
                 <h1>@PageTitle</h1>
             </div>
             <div class="user-controls">
@@ -76,6 +77,9 @@
     // Override the OnInitializedAsync to fetch user details and breadcrumbs
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to location changes
+        NavigationManager.LocationChanged += LocationChanged;
+
         // Fetch the authentication state
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
@@ -101,15 +105,45 @@
 
         Console.WriteLine($"Final Assigned Role: {UserRole}");
 
+        // Update breadcrumbs and page title based on current URL
+        UpdateBreadcrumbsAndTitle();
+    }
 
+    private void LocationChanged(object sender, LocationChangedEventArgs e)
+    {
+        // Update breadcrumbs and page title when navigation occurs
+        UpdateBreadcrumbsAndTitle();
 
+        // Trigger a UI refresh
+        InvokeAsync(StateHasChanged);
+    }
 
-        // Generate breadcrumb from the current URL (splitting by '/')
-        var segments = NavigationManager.Uri.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-        BreadcrumbSegments = segments.Select(s => CapitalizeFirstLetter(s)).ToList();
+    private void UpdateBreadcrumbsAndTitle()
+    {
+        // Extract the path from the current URL
+        var uri = new Uri(NavigationManager.Uri);
+        var path = uri.AbsolutePath;
 
-        // Optionally set the page title based on the last breadcrumb or default to "Dashboard"
-        PageTitle = BreadcrumbSegments.LastOrDefault() ?? "Dashboard";
+        // Skip the first segment if it's empty (for URLs like "https://example.com/dashboard")
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        // Clear existing breadcrumbs and add "Home" as the first segment if needed
+        BreadcrumbSegments = new List<string>();
+
+        if (segments.Length > 0)
+        {
+            // Add all segments with capitalized first letter
+            BreadcrumbSegments = segments.Select(s => CapitalizeFirstLetter(s)).ToList();
+
+            // Set page title based on the last segment
+            PageTitle = BreadcrumbSegments.LastOrDefault() ?? "Dashboard";
+        }
+        else
+        {
+            // Default for home page
+            BreadcrumbSegments.Add("Dashboard");
+            PageTitle = "Dashboard";
+        }
     }
 
     // Helper function to capitalize the first letter of each breadcrumb segment
@@ -122,5 +156,11 @@
     private async Task Logout()
     {
         await AuthService.Logout();
+    }
+
+    // Implement IDisposable to unsubscribe from the event when the component is disposed
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= LocationChanged;
     }
 }

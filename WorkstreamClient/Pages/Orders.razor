@@ -162,7 +162,11 @@
                                         <span class="order-id">#@order.OrderId</span>
                                         <span class="order-status status-@order.Status.ToLower()">@order.Status</span>
                                         <span class="order-date">@order.OrderDate.ToString("MM/dd/yyyy")</span>
-                                        <span class="customer-id">Customer: @order.CustomerId</span>
+                                        <span class="customer-id">
+                                            Customer: @order.CustomerId -
+                                            @filteredCustomers.FirstOrDefault(c => c.CustomerId == order.CustomerId)?.Name
+                                        </span>
+
                                     </div>
                                 </button>
                             </div>
@@ -214,6 +218,9 @@
             }
         </div>
     </div>
+
+
+
 </div>
 
 @code {

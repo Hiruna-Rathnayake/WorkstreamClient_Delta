@@ -141,8 +141,10 @@
                                 <div class="stock-details">
                                     <div><span class="badge badge-primary">Batch: @stock.BatchNumber</span></div>
                                     <div>Quantity: @stock.Quantity</div>
-                                    <div>Expiration: @stock.ExpirationDate.ToShortDateString()</div>
+                                    <div>MFD: @stock.ManufacturingDate.ToShortDateString()</div>
+                                    <div>EXD: @stock.ExpirationDate.ToShortDateString()</div>
                                 </div>
+                                <button @onclick="() => EditStock(stock)" class="btn btn-secondary">Edit</button>
                                 <button @onclick="() => DeleteStock(stock.StockId)" class="btn btn-danger">Delete</button>
                             </li>
                         }
@@ -186,7 +188,49 @@
             </div>
         </div>
     }
+
+    @if (isEditingStock)
+    {
+        <div class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Edit Stock for @selectedStock.InventoryItemName</h4>
+                    <button class="close-button" @onclick="CancelEditStock">&times;</button>
+                </div>
+                <EditForm Model="@editStock" OnValidSubmit="UpdateStock">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="form-group">
+                        <label class="form-label">Quantity</label>
+                        <InputNumber @bind-Value="editStock.Quantity" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Manufacturing Date</label>
+                        <InputDate @bind-Value="editStock.ManufacturingDate" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Expiration Date</label>
+                        <InputDate @bind-Value="editStock.ExpirationDate" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Batch Number</label>
+                        <InputText @bind-Value="editStock.BatchNumber" class="form-control" />
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button type="button" class="btn btn-secondary" @onclick="CancelEditStock">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update Stock</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+
 </div>
+
+
 
 @code {
     private InventoryItemWriteDTO newItem = new InventoryItemWriteDTO();
@@ -195,6 +239,12 @@
     private InventoryItemReadDTO selectedInventoryItem;
     private InventoryItemReadDTO editItem;
     private bool isEditing = false;
+
+    private StockReadDTO selectedStock;  // To hold the selected stock for editing
+    private StockWriteDTO editStock = new StockWriteDTO();  // To store edited stock values
+    private bool isEditingStock = false;  // Flag to control modal visibility
+
+
     private string searchQuery = "";
     private int itemsToShow = 20; // Limit initial items
     private int itemsIncrement = 10; // How many more to load each time
@@ -307,8 +357,12 @@
         }
 
         await StockService.CreateStockAsync(newStock);
-        // After creating stock, reload the stock for the selected inventory item
+
+        await LoadInventoryItems();
+
+        // Fetch updated stock for the selected item
         await LoadStockForItem(newStock.InventoryItemId);
+
         newStock = new StockWriteDTO(); // Reset the form
     }
 
@@ -316,10 +370,13 @@
     private async Task DeleteStock(int stockId)
     {
         await StockService.DeleteStockAsync(stockId);
+
         if (selectedInventoryItem != null)
         {
             await LoadStockForItem(selectedInventoryItem.InventoryItemId); // Reload stock for selected item
         }
+
+        NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true); // Refresh the page
     }
 
     // Search logic
@@ -338,5 +395,43 @@
     {
         NavigationManager.NavigateTo("/dashboard");
     }
+
+
+    private void EditStock(StockReadDTO stock)
+    {
+        selectedStock = stock;
+        editStock = new StockWriteDTO
+            {
+                Quantity = stock.Quantity,
+                ManufacturingDate = stock.ManufacturingDate,
+                ExpirationDate = stock.ExpirationDate,
+                BatchNumber = stock.BatchNumber
+            };
+        isEditingStock = true;
+    }
+
+    private void CancelEditStock()
+    {
+        isEditingStock = false;
+    }
+
+    private async Task UpdateStock()
+    {
+        try
+        {
+            // Call the service to update the stock
+            await StockService.UpdateStockAsync(selectedStock.StockId, editStock);
+
+            // After updating, force a page reload
+            NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);  // Full page reload
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating stock: {ex.Message}");
+        }
+    }
+
+
 
 }

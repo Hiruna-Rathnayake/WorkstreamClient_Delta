@@ -18,96 +18,149 @@ namespace WorkstreamClient.Services
             _authenticationService = authenticationService;  // Initialize AuthenticationService
         }
 
-        // Create a new Customer
-        public async Task<CustomerReadDTO> CreateCustomerAsync(CustomerWriteDTO customerDTO)
+        // Helper method to handle HTTP responses
+        private async Task<T> HandleResponse<T>(HttpResponseMessage response)
         {
-            var token = await _authenticationService.GetTokenAsync();
-
-            // Add token to request headers
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            var response = await _httpClient.PostAsJsonAsync("api/customer", customerDTO);
-
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<CustomerReadDTO>();
+                return await response.Content.ReadFromJsonAsync<T>();
             }
             else
             {
                 var errorMessage = await response.Content.ReadAsStringAsync();
-                throw new Exception($"Error creating customer: {errorMessage}");
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    throw new PermissionDeniedException($"Permission denied: {errorMessage}");
+                }
+                throw new Exception($"Error: {errorMessage}");
+            }
+        }
+
+        // Create a new Customer
+        public async Task<CustomerReadDTO> CreateCustomerAsync(CustomerWriteDTO customerDTO)
+        {
+            try
+            {
+                var token = await _authenticationService.GetTokenAsync();
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                var response = await _httpClient.PostAsJsonAsync("api/customer", customerDTO);
+
+                return await HandleResponse<CustomerReadDTO>(response);
+            }
+            catch (PermissionDeniedException ex)
+            {
+                // Handle PermissionDeniedException
+                throw new PermissionDeniedException($"Permission denied while creating customer: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                // Handle all other types of exceptions
+                throw new Exception($"An error occurred while creating the customer: {ex.Message}");
             }
         }
 
         // Get Customer by ID
         public async Task<CustomerReadDTO> GetCustomerByIdAsync(int customerId)
         {
-            var token = await _authenticationService.GetTokenAsync();
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            var response = await _httpClient.GetAsync($"api/customer/{customerId}");
-
-            if (response.IsSuccessStatusCode)
+            try
             {
-                return await response.Content.ReadFromJsonAsync<CustomerReadDTO>();
+                var token = await _authenticationService.GetTokenAsync();
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                var response = await _httpClient.GetAsync($"api/customer/{customerId}");
+
+                return await HandleResponse<CustomerReadDTO>(response);
             }
-            else
+            catch (PermissionDeniedException ex)
             {
-                var errorMessage = await response.Content.ReadAsStringAsync();
-                throw new Exception($"Error retrieving customer: {errorMessage}");
+                // Handle PermissionDeniedException
+                throw new PermissionDeniedException($"Permission denied while retrieving customer: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                // Handle all other types of exceptions
+                throw new Exception($"An error occurred while retrieving the customer: {ex.Message}");
             }
         }
 
         // Get All Customers for a Tenant
         public async Task<List<CustomerReadDTO>> GetAllCustomersAsync()
         {
-            var token = await _authenticationService.GetTokenAsync();
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            var response = await _httpClient.GetAsync("api/customer");
-
-            if (response.IsSuccessStatusCode)
+            try
             {
-                return await response.Content.ReadFromJsonAsync<List<CustomerReadDTO>>();
+                var token = await _authenticationService.GetTokenAsync();
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                var response = await _httpClient.GetAsync("api/customer");
+
+                return await HandleResponse<List<CustomerReadDTO>>(response);
             }
-            else
+            catch (PermissionDeniedException ex)
             {
-                var errorMessage = await response.Content.ReadAsStringAsync();
-                throw new Exception($"Error retrieving customers: {errorMessage}");
+                // Handle PermissionDeniedException
+                throw new PermissionDeniedException($"Permission denied while retrieving customers: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                // Handle all other types of exceptions
+                throw new Exception($"An error occurred while retrieving customers: {ex.Message}");
             }
         }
 
         // Update a Customer
         public async Task<CustomerReadDTO> UpdateCustomerAsync(int customerId, CustomerWriteDTO customerDTO)
         {
-            var token = await _authenticationService.GetTokenAsync();
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            var response = await _httpClient.PutAsJsonAsync($"api/customer/{customerId}", customerDTO);
-
-            if (response.IsSuccessStatusCode)
+            try
             {
-                return await response.Content.ReadFromJsonAsync<CustomerReadDTO>();
+                var token = await _authenticationService.GetTokenAsync();
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                var response = await _httpClient.PutAsJsonAsync($"api/customer/{customerId}", customerDTO);
+
+                return await HandleResponse<CustomerReadDTO>(response);
             }
-            else
+            catch (PermissionDeniedException ex)
             {
-                var errorMessage = await response.Content.ReadAsStringAsync();
-                throw new Exception($"Error updating customer: {errorMessage}");
+                // Handle PermissionDeniedException
+                throw new PermissionDeniedException($"Permission denied while updating customer: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                // Handle all other types of exceptions
+                throw new Exception($"An error occurred while updating the customer: {ex.Message}");
             }
         }
 
         // Soft delete a Customer
         public async Task DeleteCustomerAsync(int customerId)
         {
-            var token = await _authenticationService.GetTokenAsync();
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            var response = await _httpClient.DeleteAsync($"api/customer/{customerId}");
-
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                var errorMessage = await response.Content.ReadAsStringAsync();
-                throw new Exception($"Error deleting customer: {errorMessage}");
+                var token = await _authenticationService.GetTokenAsync();
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                var response = await _httpClient.DeleteAsync($"api/customer/{customerId}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorMessage = await response.Content.ReadAsStringAsync();
+                    if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                    {
+                        throw new PermissionDeniedException($"Permission denied: {errorMessage}");
+                    }
+                    throw new Exception($"Error deleting customer: {errorMessage}");
+                }
+            }
+            catch (PermissionDeniedException ex)
+            {
+                // Handle PermissionDeniedException
+                throw new PermissionDeniedException($"Permission denied while deleting customer: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                // Handle all other types of exceptions
+                throw new Exception($"An error occurred while deleting the customer: {ex.Message}");
             }
         }
     }

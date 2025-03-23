@@ -6,9 +6,22 @@
 @inject IJSRuntime JSRuntime
 
 <HeadContent>
+    <link href="css/inventory.css" rel="stylesheet" />
     <link href="css/usermanagementv1.css" rel="stylesheet" />
     <link href="css/mainlayout.css" rel="stylesheet" />
+
 </HeadContent>
+
+@if (!hasPermission)
+{
+    <div class="modal-overlay">
+        <div class="modal-content">
+            <h2>Access Denied</h2>
+            <p>You do not have permission to view this page.</p>
+            <button @onclick="GoToDashboard" class="btn btn-primary">Return to Dashboard</button>
+        </div>
+    </div>
+}
 
 <div class="user-mgmt-page">
     @if (!string.IsNullOrEmpty(errorMessage))
@@ -139,7 +152,8 @@
                                 <td>
                                     <div class="actions-container">
                                         <button class="action-btn edit-btn" @onclick="() => EditRole(rrole.RoleId)">Edit</button>
-                                        <button class="action-btn delete-btn">Delete</button>
+                                        <button class="action-btn delete-btn" @onclick="() => DeleteRole(rrole.RoleId)">Delete</button>
+
                                     </div>
                                 </td>
                             </tr>
@@ -233,6 +247,8 @@
     private IEnumerable<RoleWithPermissionsDTO> rroles = new List<RoleWithPermissionsDTO>();
     private IEnumerable<PermissionReadDTO> permissions = new List<PermissionReadDTO>();
 
+    private bool hasPermission = true; // Assume the user has permission initially
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -246,8 +262,14 @@
         }
         catch (Exception ex)
         {
+            hasPermission = false;
             errorMessage = $"Error loading data: {ex.Message}";
         }
+    }
+
+    private void GoToDashboard()
+    {
+        Navigation.NavigateTo("/dashboard");
     }
 
     private async Task CreateUser()
@@ -311,10 +333,30 @@
         }
     }
 
+
+    private async Task DeleteRole(int roleId)
+    {
+        bool confirmed = await ConfirmDelete();
+        if (confirmed)
+        {
+            try
+            {
+                await UserService.DeleteRoleAsync(roleId);
+                rroles = await UserService.GetRolesWithPermissionsAsync(); // Refresh roles list
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting role: {ex.Message}";
+            }
+        }
+    }
+
+
     private async Task<bool> ConfirmDelete()
     {
-        return await JSRuntime.InvokeAsync<bool>("confirmDelete", "Are you sure you want to delete this user?");
+        return await JSRuntime.InvokeAsync<bool>("confirmDelete", "Are you sure you want to delete this?");
     }
+
 
     private void EditRole(int roleId)
     {

@@ -1,0 +1,304 @@
+﻿@page "/register"
+@inject NavigationManager NavigationManager
+@inject HttpClient HttpClient
+@using WorkstreamClient.Services
+@using WorkstreamClient.DTO
+@using System.Text.Json
+@using System.Text
+@using System.ComponentModel.DataAnnotations
+
+<div class="login-container">
+    <div class="login-card">
+        <h3 class="login-title">Create Your Account</h3>
+        <p class="login-subtitle">Get started with your organization</p>
+
+        <EditForm Model="registrationModel" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> @errorMessage
+                </div>
+            }
+
+            <div class="form-section">
+                <h4 class="section-title">Organization Details</h4>
+
+                <div class="form-group">
+                    <label for="companyName">Company Name</label>
+                    <InputText id="companyName" class="form-control" @bind-Value="registrationModel.CompanyName" />
+                    <ValidationMessage For="@(() => registrationModel.CompanyName)" class="validation-message" />
+                </div>
+
+                <div class="form-group">
+                    <label for="contactEmail">Contact Email</label>
+                    <InputText id="contactEmail" class="form-control" @bind-Value="registrationModel.ContactEmail" type="email" />
+                    <ValidationMessage For="@(() => registrationModel.ContactEmail)" class="validation-message" />
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h4 class="section-title">Account Details</h4>
+
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <InputText id="username" class="form-control" @bind-Value="registrationModel.Username" />
+                    <ValidationMessage For="@(() => registrationModel.Username)" class="validation-message" />
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <InputText id="password" class="form-control" @bind-Value="registrationModel.Password" type="password" />
+                    <ValidationMessage For="@(() => registrationModel.Password)" class="validation-message" />
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <InputText id="confirmPassword" class="form-control" @bind-Value="registrationModel.ConfirmPassword" type="password" />
+                    <ValidationMessage For="@(() => registrationModel.ConfirmPassword)" class="validation-message" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Create Account</button>
+            </div>
+
+            <div class="form-links">
+                <span>Already have an account?</span>
+                <a href="/login">Sign In</a>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+<style>
+    /* Registration page styling */
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+        padding: 20px;
+        background-color: #f8f9fa;
+        background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 500px;
+        padding: 30px;
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .login-title {
+        text-align: center;
+        margin-bottom: 5px;
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 1.8rem;
+    }
+
+    .login-subtitle {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #7f8c8d;
+        font-size: 0.9rem;
+    }
+
+    .form-section {
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        color: #3498db;
+        margin-bottom: 15px;
+        font-weight: 500;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #495057;
+        }
+
+    .form-control {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        font-size: 1rem;
+    }
+
+        .form-control:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+            outline: 0;
+        }
+
+    .btn-primary {
+        width: 100%;
+        padding: 12px;
+        background-color: #3498db;
+        border: none;
+        border-radius: 6px;
+        color: white;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 1rem;
+        margin-top: 10px;
+    }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+    .alert {
+        padding: 12px;
+        margin-bottom: 20px;
+        border-radius: 6px;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .validation-message {
+        color: #dc3545;
+        font-size: 0.85rem;
+        margin-top: 5px;
+        display: block;
+    }
+
+    .form-links {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 20px;
+        font-size: 0.9rem;
+    }
+
+        .form-links a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+            .form-links a:hover {
+                text-decoration: underline;
+            }
+</style>
+
+@code {
+    private RegistrationModel registrationModel = new RegistrationModel();
+    private string errorMessage = string.Empty;
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            // Validate password match
+            if (registrationModel.Password != registrationModel.ConfirmPassword)
+            {
+                errorMessage = "Passwords do not match.";
+                return;
+            }
+
+            var tenantWithUserDto = new TenantWithUserDTO
+                {
+                    Tenant = new TenantWriteDTO
+                    {
+                        CompanyName = registrationModel.CompanyName,
+                        ContactEmail = registrationModel.ContactEmail
+                    },
+                    User = new UserWriteDTO
+                    {
+                        Username = registrationModel.Username,
+                        PasswordHash = registrationModel.Password // Note: Password should be hashed on server-side
+                    }
+                };
+
+            var tenantJson = new StringContent(
+                JsonSerializer.Serialize(tenantWithUserDto),
+                Encoding.UTF8,
+                "application/json");
+
+            var response = await HttpClient.PostAsync("api/Tenant/CreateTenantWithUser", tenantJson);
+
+            if (response.IsSuccessStatusCode)
+            {
+                try
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    // Attempt to deserialize (if no cycle exists)
+                    JsonSerializer.Deserialize<object>(content);
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    // Circular reference detected, assume success
+                    NavigationManager.NavigateTo("/login");
+                    return;
+                }
+
+                // If no exception, proceed normally
+                NavigationManager.NavigateTo("/login");
+                return;
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            errorMessage = $"Registration failed: {errorContent}";
+        }
+        catch (Exception ex)
+        {
+            if (ex.Message.Contains("connection"))
+            {
+                errorMessage = "Unable to connect to the server. Please check your internet connection.";
+            }
+            else
+            {
+                errorMessage = $"An error occurred during registration: {ex.Message}";
+            }
+        }
+    }
+
+
+    // View model for the registration form
+    public class RegistrationModel
+    {
+        [Required(ErrorMessage = "Username is required")]
+        [StringLength(50, MinimumLength = 3, ErrorMessage = "Username must be between 3 and 50 characters")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required")]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please confirm your password")]
+        [Compare("Password", ErrorMessage = "Passwords do not match")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Company name is required")]
+        public string CompanyName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Contact email is required")]
+        [EmailAddress(ErrorMessage = "Invalid email format")]
+        public string ContactEmail { get; set; } = string.Empty;
+    }
+}
